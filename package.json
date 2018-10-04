@@ -4,7 +4,7 @@
   "description": "This is a project to create a cool coloring effect.",
   "main": "./dist/js/main.js",
   "scripts": {
-    "build": "npm run tslint && npm run clean && tsc -p \"./src\"",
+    "build": "npm run tslint && tsc -p \"./src\"",
     "clean": "rm -rf ./dist/*",
     "watch": "concurrently \"tsc -wp \"./src\"",
     "tslint": "tslint -c tslint.json -p src/tsconfig.json"
