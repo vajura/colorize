@@ -46,10 +46,9 @@ class Colorize {
 		this.imageData = this.ctx.createImageData(this.domWidth, this.domHeight);
 		this.data32 = new Uint32Array(this.imageData.data.buffer);
 
-		this.randArray.push(11);
-		this.ccArray.push({c1: 'rgb(255, 0, 0)', c2: 'rgb(0, 255, 0)', steps: 32});
-		this.ccArray.push({c1: 'rgb(0, 255, 0)', c2: 'rgb(0, 0, 255)', steps: 32});
-		this.ccArray.push({c1: 'rgb(0, 0, 255)', c2: 'rgb(255, 0, 0)', steps: 32});
+		this.ccArray.push({c1: 'rgb(0, 0, 255)', c2: 'rgb(0, 0, 0)', steps: 16});
+		this.ccArray.push({c1: 'rgb(255, 0, 0)', c2: 'rgb(0, 0, 0)', steps: 16});
+		this.randArray.push(7);
 		this.generateColorArray([this.ccArray[this.ccArrayCounter]] as CustomColors[]);
 		setTimeout(() => {
 			this.draw();
@@ -133,7 +132,6 @@ class Colorize {
 		this.moveArray[6] = {x: 0, y: 1};
 		this.moveArray[7] = {x: 1, y: 1};
 	}
-
 	private generateColorArray(colors: CustomColors[]) {
 		this.colorArray = [];
 		for (let a = 0; a < colors.length; a++) {
@@ -191,6 +189,6 @@ document.addEventListener('DOMContentLoaded', (event) => {
 		startingX: 250,
 		startingY: 5,
 		overrideStartToCenter: true,
-		speed: 600
+		speed: 4
 	});
 });
