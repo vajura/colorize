@@ -67,7 +67,6 @@ class Colorize {
 			if (this.speed > this.totalCounter) {
 				actualSpeed = this.pixel1dField.length;
 			}
-			console.log(this.totalCounter);
 			for (let b = 0; b < actualSpeed; b++) {
 				for (let a = 0; a < 8; a++) {
 					const newX = this.xPos + this.moveArray[a].x;
