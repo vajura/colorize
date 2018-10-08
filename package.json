@@ -4,20 +4,23 @@
   "description": "This is a project to create a cool coloring effect.",
   "main": "./dist/js/main.js",
   "scripts": {
-    "build": "npm run tslint && tsc -p \"./src\"",
+    "build": "npm run create-dir && npm run copy-static-files && npm run build-css && npm run tslint && tsc -p \"./src\"",
     "clean": "rm -rf ./dist/*",
     "watch": "concurrently \"tsc -wp \"./src\"",
-    "tslint": "tslint -c tslint.json -p src/tsconfig.json"
+    "tslint": "tslint -c tslint.json -p src/tsconfig.json",
+    "create-dir": "mkdirp dist/style",
+    "copy-static-files": "cp src/index.html dist/index.html",
+    "build-css": "node-sass ./src/style/style.scss ./dist/style/style.css --output-style compressed"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/vajura/colorize.git"
+    "url": "git+https://github.com/vajura/colorizegit"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/vajura/colorize/issues"
+    "url": "ttps://github.com/vajura/colorize/issues"
   },
   "homepage": "https://github.com/vajura/colorize#readme",
   "devDependencies": {
