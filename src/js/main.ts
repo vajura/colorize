@@ -24,8 +24,9 @@ class Colorize {
 	private doNextGeneration: boolean = false;
 	private ccArray: CustomColors[] = [];
 	private ccArrayCounter: number = 0;
+	private textCounter: number = 0;
 
-	constructor(options: ColorizeOptions) {
+	constructor(options: ColorizeOptions, text: string = '') {
 		this.speed = options.speed | 200;
 		const domRect: any = document.getElementById(options.domId);
 		(<HTMLCanvasElement>document.getElementById(options.domId)).height = Math.round(domRect.clientHeight);
@@ -38,13 +39,18 @@ class Colorize {
 			this.xPos = Math.round(domRect.width / 2);
 			this.yPos = Math.round(domRect.height / 2);
 		}
-		this.nextGeneration();
 		this.generateMoveArray();
 
 		this.canv = <HTMLCanvasElement>document.getElementById(options.domId);
 	  this.ctx = this.canv.getContext('2d');
+		this.ctx.font = '100px Inconsolata';
+		this.ctx.fillText('Hello World', 200, 200);
+		const textImageData = this.ctx.getImageData(0, 0, this.domWidth, this.domHeight);
+		const textData32 = new Uint32Array(textImageData.data.buffer);
 		this.imageData = this.ctx.createImageData(this.domWidth, this.domHeight);
 		this.data32 = new Uint32Array(this.imageData.data.buffer);
+
+		this.nextGeneration(true, textData32);
 
 		this.ccArray.push({c1: 'rgb(0, 0, 255)', c2: 'rgb(0, 0, 0)', steps: 16});
 		this.ccArray.push({c1: 'rgb(255, 0, 0)', c2: 'rgb(0, 0, 0)', steps: 16});
@@ -98,7 +104,7 @@ class Colorize {
 		}, this.interval);
 	}
 
-	private nextGeneration(initArray: boolean = true) {
+	private nextGeneration(initArray: boolean = true, textData32?: any) {
 		this.currentLevel++;
 		this.currentLevelPlusOne++;
 		this.totalCounter = this.domWidth * this.domHeight - this.domWidth * 2 - this.domHeight * 2 + 3;
@@ -118,6 +124,16 @@ class Colorize {
 			this.pixel2dField[0][a] = this.currentLevelPlusOne;
 			this.pixel2dField[this.domHeight - 1][a] = this.currentLevelPlusOne;
 		}
+		if (textData32) {
+			console.log('aa');
+			for (let a = 0; a < textData32.length; a++) {
+				if (textData32[a] > 0) {
+					this.pixel2dField[Math.floor(a / this.domWidth)][a % this.domWidth] = -1;
+					this.textCounter++;
+				}
+			}
+		}
+		this.totalCounter -= this.textCounter;
 		this.pixel2dField[this.yPos][this.xPos] = this.currentLevelPlusOne;
 		this.pixel1dField.push({x: this.xPos, y: this.yPos});
 		this.counter = 0;
@@ -189,6 +205,6 @@ document.addEventListener('DOMContentLoaded', (event) => {
 		startingX: 250,
 		startingY: 5,
 		overrideStartToCenter: true,
-		speed: 4
+		speed: 800
 	});
 });
