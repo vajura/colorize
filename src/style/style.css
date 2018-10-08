@@ -1,0 +1,10 @@
+html, body {
+	margin: 0;
+	padding: 0;
+	width: 100%;
+}
+.canvasContainer {
+	margin: 2px;
+	height: 800px;
+	width: 800px;
+}
