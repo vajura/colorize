@@ -3,7 +3,6 @@ class Colorize {
 	public timeoutIndex: number;
 	public domWidth: number = 10;
 	public domHeight: number = 10;
-	public totalCounter: number;
 	public xPos: number;
 	public yPos: number;
 	public speed: number;
@@ -25,6 +24,7 @@ class Colorize {
 	private ccArray: CustomColors[] = [];
 	private ccArrayCounter: number = 0;
 	private textCounter: number = 0;
+	private totalCounter: number;
 
 	constructor(options: ColorizeOptions, text: string = '') {
 		this.speed = options.speed | 200;
@@ -44,7 +44,7 @@ class Colorize {
 		this.canv = <HTMLCanvasElement>document.getElementById(options.domId);
 	  this.ctx = this.canv.getContext('2d');
 		this.ctx.font = '100px Inconsolata';
-		this.ctx.fillText('Hello World', 200, 200);
+		this.ctx.fillText('TTTTTTTT', 200, 200);
 		const textImageData = this.ctx.getImageData(0, 0, this.domWidth, this.domHeight);
 		const textData32 = new Uint32Array(textImageData.data.buffer);
 		this.imageData = this.ctx.createImageData(this.domWidth, this.domHeight);
@@ -67,6 +67,7 @@ class Colorize {
 			if (this.speed > this.totalCounter) {
 				actualSpeed = this.pixel1dField.length;
 			}
+			console.log(this.totalCounter);
 			for (let b = 0; b < actualSpeed; b++) {
 				for (let a = 0; a < 8; a++) {
 					const newX = this.xPos + this.moveArray[a].x;
