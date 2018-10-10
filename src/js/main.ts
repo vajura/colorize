@@ -26,7 +26,7 @@ class Colorize {
 	private textCounter: number = 0;
 	private totalCounter: number;
 
-	constructor(options: ColorizeOptions, text: string = '') {
+	constructor(options: ColorizeOptions) {
 		this.speed = options.speed | 200;
 		const domRect: any = document.getElementById(options.domId);
 		(<HTMLCanvasElement>document.getElementById(options.domId)).height = Math.round(domRect.clientHeight);
@@ -190,13 +190,17 @@ interface Point {
 	x: number;
 	y: number;
 }
-
+interface DrawData {
+	point: Point;
+	array: Point[];
+}
 interface ColorizeOptions {
 	domId?: string;
 	startingX?: number;
 	startingY?: number;
 	overrideStartToCenter?: boolean;
 	speed?: number;
+	text?: string;
 }
 
 document.addEventListener('DOMContentLoaded', (event) => {
