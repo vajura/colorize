@@ -2,12 +2,11 @@ interface ColorizeInstance {
 	xPos?: number;
 	yPos?: number;
 	speed?: number;
-	colorArray?: number[];
 	timeoutIndex?: number;
 	interval?: number;
 	randArray?: number[];
-	pixel1dField?: Point[] = [];
-	customColorsCounter?: number;
+	pixel1dField?: Point[];
+	selectedPalette?: number;
 	counter?: number;
 }
 
@@ -15,8 +14,7 @@ class Colorize {
 	private domWidth: number = 10;
 	private domHeight: number = 10;
 	private moveArray: Point[] = [];
-	private customColors: CustomColors[] = [];
-	private doNextGeneration: boolean = false;
+	private colors: number[][] = [];
 	private currentGen: number = -1;
 	private currentGenPlusOne: number = 0; // performance reasons
 	private pixel2dField: number[][] = [];
@@ -43,72 +41,84 @@ class Colorize {
 		this.data32 = new Uint32Array(this.imageData.data.buffer);
 
 		this.generateMoveArray();
-		this.generateCustomColors();
 
+		for (let a = 0; a < options.palettes.length; a++) {
+      this.colors[a] = this.generateColorArray(options.palettes[a]);
+		}
 		for (let a = 0; a < options.startingPoints.length; a++) {
-
+			const sp: StartingPoint = options.startingPoints[a];
+			const instance: ColorizeInstance = {};
+			instance.xPos = sp.startingX | 1;
+			instance.yPos = sp.startingY | 1;
+			if (sp.overrideStartToCenter) {
+				instance.xPos = Math.round(this.domWidth / 2);
+				instance.yPos = Math.round(this.domHeight / 2);
+			}
+			instance.speed = sp.speed | 200;
+			instance.selectedPalette = a;
+			instance.pixel1dField = [];
+			instance.interval = 1000 / 100;
+			instance.randArray = [5];
+			instance.counter = 0;
+			this.instances.push(instance);
 		}
-
-		this.speed = options.speed | 200;
-		this.xPos = options.startingX | 1;
-		this.yPos = options.startingY | 1;
-		if (options.overrideStartToCenter) {
-			this.xPos = Math.round(domRect.width / 2);
-			this.yPos = Math.round(domRect.height / 2);
+		this.resetBoardToNextGen();
+		this.nextGen();
+		for (let a = 0; a < this.instances.length; a++) {
+			this.draw(this.instances[a]);
 		}
-
-		this.nextGeneration(true);
-
-		this.generateColorArray([this.customColors[this.customColorsCounter]] as CustomColors[]);
-		setTimeout(() => {
-			this.draw();
-		}, this.interval);
 	}
 
-	public draw() {
-		this.timeoutIndex = setTimeout(() => {
-			let actualSpeed = this.speed;
-			if (this.speed > this.totalCounter) {
-				actualSpeed = this.pixel1dField.length;
+	public nextGen() {
+    setInterval(() => {
+			if (this.totalCounter === 0) {
+				this.resetBoardToNextGen(false);
+				for (let a = 0; a < this.instances.length; a++) {
+					const instance = this.instances[a];
+					this.pixel2dField[instance.yPos][instance.xPos] = this.currentGenPlusOne;
+					instance.pixel1dField.push({x: instance.xPos, y: instance.yPos});
+					instance.counter = 0;
+					instance.selectedPalette = this.currentGenPlusOne % this.colors[instance.selectedPalette].length;
+				}
+			}
+			this.ctx.putImageData(this.imageData, 0, 0);
+    }, 60);
+	}
+
+	public draw(instance: ColorizeInstance) {
+    instance.timeoutIndex = setTimeout(() => {
+			let actualSpeed = instance.speed;
+			if (instance.speed > this.totalCounter) {
+				actualSpeed = instance.pixel1dField.length;
 			}
 			for (let b = 0; b < actualSpeed; b++) {
 				for (let a = 0; a < 8; a++) {
-					const newX = this.xPos + this.moveArray[a].x;
-					const newY = this.yPos + this.moveArray[a].y;
+					const newX = instance.xPos + this.moveArray[a].x;
+					const newY = instance.yPos + this.moveArray[a].y;
 					if (this.pixel2dField[newY][newX] === this.currentGen) {
 						this.pixel2dField[newY][newX] = this.currentGenPlusOne;
-						this.pixel1dField.push({x: newX, y: newY});
+            instance.pixel1dField.push({x: newX, y: newY});
 						this.totalCounter--;
 					}
 				}
-				let randArrayIndex = this.pixel1dField.length - this.randArray[this.counter % this.randArray.length];
-				if (randArrayIndex > this.pixel1dField.length - 1 || randArrayIndex < 0) {
-					randArrayIndex = this.pixel1dField.length - 1;
+				let randArrayIndex = instance.pixel1dField.length - instance.randArray[instance.counter % instance.randArray.length];
+				if (randArrayIndex > instance.pixel1dField.length - 1 || randArrayIndex < 0) {
+					randArrayIndex = instance.pixel1dField.length - 1;
 				}
 				if (randArrayIndex > -1) {
-					this.xPos = this.pixel1dField[randArrayIndex].x;
-					this.yPos = this.pixel1dField[randArrayIndex].y;
-					this.pixel1dField.splice(randArrayIndex, 1);
-					this.data32[this.xPos + this.yPos * this.domWidth] = this.colorArray[this.counter % this.colorArray.length];
+          instance.xPos = instance.pixel1dField[randArrayIndex].x;
+          instance.yPos = instance.pixel1dField[randArrayIndex].y;
+          instance.pixel1dField.splice(randArrayIndex, 1);
+					this.data32[instance.xPos + instance.yPos * this.domWidth] =
+						this.colors[instance.selectedPalette][instance.counter % this.colors[instance.selectedPalette].length];
 				}
 			}
-			if (this.doNextGeneration) {
-				this.nextGeneration(false);
-				this.customColorsCounter++;
-				this.generateColorArray([this.customColors[this.customColorsCounter % this.customColors.length]] as CustomColors[]);
-				this.doNextGeneration = false;
-			}
-			if (this.totalCounter === 0) {
-				this.doNextGeneration = true;
-			}
-			this.counter++;
-			this.ctx.putImageData(this.imageData, 0, 0);
-			this.draw();
-			// clearInterval(intervalIndex);
-		}, this.interval);
+      instance.counter++;
+			this.draw(instance);
+		}, instance.interval);
 	}
 
-	private nextGeneration(initArray: boolean = true, textData32?: any) {
+	private resetBoardToNextGen(initArray: boolean = true) {
 		this.currentGen++;
 		this.currentGenPlusOne++;
 		this.totalCounter = this.domWidth * this.domHeight - this.domWidth * 2 - this.domHeight * 2 + 3;
@@ -128,9 +138,6 @@ class Colorize {
 			this.pixel2dField[0][a] = this.currentGenPlusOne;
 			this.pixel2dField[this.domHeight - 1][a] = this.currentGenPlusOne;
 		}
-		this.pixel2dField[this.yPos][this.xPos] = this.currentGenPlusOne;
-		this.pixel1dField.push({x: this.xPos, y: this.yPos});
-		this.counter = 0;
 	}
 
 	private generateMoveArray() {
@@ -143,17 +150,12 @@ class Colorize {
 		this.moveArray[6] = {x: 0, y: 1};
 		this.moveArray[7] = {x: 1, y: 1};
 	}
-	private generateCustomColors() {
-		this.customColors.push({c1: 'rgb(0, 0, 255)', c2: 'rgb(0, 0, 0)', steps: 16});
-		this.customColors.push({c1: 'rgb(255, 0, 0)', c2: 'rgb(0, 0, 0)', steps: 16});
-	}
-	private generateColorArray(colors: CustomColors[]) {
-		this.colorArray = [];
-		for (let a = 0; a < colors.length; a++) {
-			for (let b = 0; b <= colors[a].steps; b++) {
-				this.colorArray.push(...this.interpolateColors(colors[a].c1, colors[a].c2, colors[a].steps));
-			}
+	private generateColorArray(palette: Palette): number[] {
+		const colors = [];
+		for (let b = 0; b <= palette.steps; b++) {
+			colors.push(...this.interpolateColors(palette.c1, palette.c2, palette.steps));
 		}
+		return colors;
 	}
 	private interpolateColor(color1: any, color2: any, factor: number = 0.5): number {
     const numberArray: number[] = color1.slice();
@@ -180,7 +182,7 @@ class Colorize {
 }
 
 
-interface CustomColors {
+interface Palette {
 	c1: string;
 	c2: string;
 	steps: number;
@@ -189,13 +191,10 @@ interface Point {
 	x: number;
 	y: number;
 }
-interface DrawData {
-	point: Point;
-	array: Point[];
-}
 interface ColorizeOptions {
 	domId: string;
 	startingPoints: StartingPoint[];
+  palettes: Palette[];
 }
 interface StartingPoint {
 	startingX?: number;
@@ -209,9 +208,15 @@ document.addEventListener('DOMContentLoaded', (event) => {
 	const colorizeDom = new Colorize(
   {
 		domId: 'canvasContainer',
-		startingPoints: [{
+		palettes: [{c1: 'rgb(0, 0, 255)', c2: 'rgb(0, 0, 0)', steps: 16}, {c1: 'rgb(0, 0, 255)', c2: 'rgb(0, 0, 0)', steps: 16}],
+    startingPoints: [{
 			startingX: 250,
 			startingY: 5,
+			speed: 20
+		},
+		{
+			startingX: 2,
+			startingY: 2,
 			speed: 100
 		}] as StartingPoint[]
 	} as ColorizeOptions);
