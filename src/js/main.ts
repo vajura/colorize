@@ -1,143 +1,159 @@
+interface ColorizeInstance {
+	xPos?: number;
+	yPos?: number;
+	speed?: number;
+	timeoutIndex?: number;
+	interval?: number;
+	randArray?: number[];
+  pixel1dOldLength?: number;
+	pixel1dField?: Point[];
+  genDone?: boolean;
+	selectedPalette?: number;
+	counter?: number;
+}
+
 class Colorize {
-	public interval: number = 1000 / 120;
-	public timeoutIndex: number;
-	public domWidth: number = 10;
-	public domHeight: number = 10;
-	public xPos: number;
-	public yPos: number;
-	public speed: number;
+	private domWidth: number = 10;
+	private domHeight: number = 10;
+	private moveArray: Point[] = [];
+	private colors: number[][] = [];
+	private currentGen: number = -1;
+	private currentGenPlusOne: number = 0; // performance reasons
+	private pixel2dField: number[][] = [];
 
 	private canv: HTMLCanvasElement;
 	private ctx: any;
 	private imageData: any;
 	private data32: Uint32Array;
 
-	private colorArray: number[] = [];
-	private randArray: number[] = [];
-	private moveArray: Point[] = [];
-	private pixel1dField: Point[] = [];
-	private pixel2dField: number[][] = [];
-	private counter: number = 0;
-	private currentLevel: number = -1;
-	private currentLevelPlusOne: number = 0;
-	private doNextGeneration: boolean = false;
-	private ccArray: CustomColors[] = [];
-	private ccArrayCounter: number = 0;
-	private textCounter: number = 0;
-	private totalCounter: number;
+	private instances: ColorizeInstance[] = [];
 
 	constructor(options: ColorizeOptions) {
-		this.speed = options.speed | 200;
 		const domRect: any = document.getElementById(options.domId);
 		(<HTMLCanvasElement>document.getElementById(options.domId)).height = Math.round(domRect.clientHeight);
 		(<HTMLCanvasElement>document.getElementById(options.domId)).width = Math.round(domRect.clientWidth);
 		this.domWidth = Math.round(domRect.clientWidth);
 		this.domHeight = Math.round(domRect.clientHeight);
-		this.xPos = options.startingX | 1;
-		this.yPos = options.startingY | 1;
-		if (options.overrideStartToCenter) {
-			this.xPos = Math.round(domRect.width / 2);
-			this.yPos = Math.round(domRect.height / 2);
-		}
-		this.generateMoveArray();
 
 		this.canv = <HTMLCanvasElement>document.getElementById(options.domId);
 	  this.ctx = this.canv.getContext('2d');
-		this.ctx.font = '100px Inconsolata';
-		this.ctx.fillText('TTTTTTTT', 200, 200);
-		const textImageData = this.ctx.getImageData(0, 0, this.domWidth, this.domHeight);
-		const textData32 = new Uint32Array(textImageData.data.buffer);
 		this.imageData = this.ctx.createImageData(this.domWidth, this.domHeight);
 		this.data32 = new Uint32Array(this.imageData.data.buffer);
 
-		this.nextGeneration(true, textData32);
+		this.generateMoveArray();
 
-		this.ccArray.push({c1: 'rgb(0, 0, 255)', c2: 'rgb(0, 0, 0)', steps: 16});
-		this.ccArray.push({c1: 'rgb(255, 0, 0)', c2: 'rgb(0, 0, 0)', steps: 16});
-		this.randArray.push(7);
-		this.generateColorArray([this.ccArray[this.ccArrayCounter]] as CustomColors[]);
-		setTimeout(() => {
-			this.draw();
-		}, this.interval);
+		for (let a = 0; a < options.palettes.length; a++) {
+      this.colors[a] = this.generateColorArray(options.palettes[a]);
+		}
+		for (let a = 0; a < options.startingPoints.length; a++) {
+			const sp: StartingPoint = options.startingPoints[a];
+			const instance: ColorizeInstance = {};
+			instance.xPos = sp.startingX || 1;
+			instance.yPos = sp.startingY || 1;
+			if (sp.overrideStartToCenter) {
+				instance.xPos = Math.round(this.domWidth / 2);
+				instance.yPos = Math.round(this.domHeight / 2);
+			}
+			instance.speed = sp.speed || 100;
+			instance.selectedPalette = sp.palette || 0;
+			instance.pixel1dField = [];
+			instance.interval = 1000 / 100;
+			instance.randArray = [7];
+			instance.counter = 0;
+			instance.pixel1dOldLength = 0;
+			instance.genDone = false;
+			this.instances.push(instance);
+		}
+		this.resetBoardToNextGen();
+		this.nextGen();
+		for (let a = 0; a < this.instances.length; a++) {
+			this.draw(this.instances[a]);
+		}
 	}
 
-	public draw() {
-		this.timeoutIndex = setTimeout(() => {
-			let actualSpeed = this.speed;
-			if (this.speed > this.totalCounter) {
-				actualSpeed = this.pixel1dField.length;
+	nextGen = () => {
+		let next = true;
+		for (let a = 0; a < this.instances.length; a++) {
+			if (!this.instances[a].genDone) {
+				next = false;
 			}
-			for (let b = 0; b < actualSpeed; b++) {
+		}
+		if (next) {
+			this.resetBoardToNextGen(false);
+			for (let a = 0; a < this.instances.length; a++) {
+				const instance = this.instances[a];
+				this.pixel2dField[instance.yPos][instance.xPos] = this.currentGenPlusOne;
+				instance.pixel1dField = [];
+				instance.pixel1dField.push({x: instance.xPos, y: instance.yPos});
+				instance.counter = 0;
+				instance.pixel1dOldLength = 0;
+				instance.genDone = false;
+			}
+			for (let a = 0; a < this.instances.length; a++) {
+				this.draw(this.instances[a]);
+			}
+		}
+		this.ctx.putImageData(this.imageData, 0, 0);
+		requestAnimationFrame(() => {
+			this.nextGen();
+    });
+	};
+
+	draw = (instance: ColorizeInstance) => {
+		if (!instance.genDone) {
+			instance.pixel1dOldLength = instance.pixel1dField.length;
+			for (let b = 0; b < instance.speed; b++) {
 				for (let a = 0; a < 8; a++) {
-					const newX = this.xPos + this.moveArray[a].x;
-					const newY = this.yPos + this.moveArray[a].y;
-					if (this.pixel2dField[newY][newX] === this.currentLevel) {
-						this.pixel2dField[newY][newX] = this.currentLevelPlusOne;
-						this.pixel1dField.push({x: newX, y: newY});
-						this.totalCounter--;
+					const newX = instance.xPos + this.moveArray[a].x;
+					const newY = instance.yPos + this.moveArray[a].y;
+					if (this.pixel2dField[newY][newX] === this.currentGen) {
+						this.pixel2dField[newY][newX] = this.currentGenPlusOne;
+						instance.pixel1dField.push({x: newX, y: newY});
 					}
 				}
-				let randArrayIndex = this.pixel1dField.length - this.randArray[this.counter % this.randArray.length];
-				if (randArrayIndex > this.pixel1dField.length - 1 || randArrayIndex < 0) {
-					randArrayIndex = this.pixel1dField.length - 1;
+				let index = instance.pixel1dField.length - instance.randArray[instance.counter % instance.randArray.length];
+				if (index >= instance.pixel1dField.length || index < 0) {
+					index = instance.pixel1dField.length - 1;
 				}
-				if (randArrayIndex > -1) {
-					this.xPos = this.pixel1dField[randArrayIndex].x;
-					this.yPos = this.pixel1dField[randArrayIndex].y;
-					this.pixel1dField.splice(randArrayIndex, 1);
-					this.data32[this.xPos + this.yPos * this.domWidth] = this.colorArray[this.counter % this.colorArray.length];
+				if (index > -1) {
+					instance.xPos = instance.pixel1dField[index].x;
+					instance.yPos = instance.pixel1dField[index].y;
+					instance.pixel1dField.splice(index, 1);
+					this.data32[instance.xPos + instance.yPos * this.domWidth] =
+						this.colors[instance.selectedPalette][instance.counter % this.colors[instance.selectedPalette].length];
 				}
 			}
-			if (this.doNextGeneration) {
-				this.nextGeneration(false);
-				this.ccArrayCounter++;
-				this.generateColorArray([this.ccArray[this.ccArrayCounter % this.ccArray.length]] as CustomColors[]);
-				this.doNextGeneration = false;
+			if (instance.pixel1dOldLength == 0 && instance.pixel1dField.length == 0) {
+				instance.genDone = true;
 			}
-			if (this.totalCounter === 0) {
-				this.doNextGeneration = true;
-			}
-			this.counter++;
-			this.ctx.putImageData(this.imageData, 0, 0);
-			this.draw();
-			// clearInterval(intervalIndex);
-		}, this.interval);
-	}
+			instance.counter++;
+      requestAnimationFrame(() => {
+        this.draw(instance);
+      });
+		}
+	};
 
-	private nextGeneration(initArray: boolean = true, textData32?: any) {
-		this.currentLevel++;
-		this.currentLevelPlusOne++;
-		this.totalCounter = this.domWidth * this.domHeight - this.domWidth * 2 - this.domHeight * 2 + 3;
+	private resetBoardToNextGen(initArray: boolean = true) {
+		this.currentGen++;
+		this.currentGenPlusOne++;
 		if (initArray) {
 			for (let a = 0; a < this.domHeight; a++) {
 				this.pixel2dField[a] = [];
 				for (let b = 0; b < this.domWidth; b++) {
-					this.pixel2dField[a][b] = this.currentLevel;
+					this.pixel2dField[a][b] = this.currentGen;
 				}
 			}
 		}
 		for (let a = 0; a < this.domHeight; a++) {
-			this.pixel2dField[a][0] = this.currentLevelPlusOne;
-			this.pixel2dField[a][this.domWidth - 1] = this.currentLevelPlusOne;
+			this.pixel2dField[a][0] = this.currentGenPlusOne;
+			this.pixel2dField[a][this.domWidth - 1] = this.currentGenPlusOne;
 		}
 		for (let a = 0; a < this.domWidth; a++) {
-			this.pixel2dField[0][a] = this.currentLevelPlusOne;
-			this.pixel2dField[this.domHeight - 1][a] = this.currentLevelPlusOne;
+			this.pixel2dField[0][a] = this.currentGenPlusOne;
+			this.pixel2dField[this.domHeight - 1][a] = this.currentGenPlusOne;
 		}
-		if (textData32) {
-			console.log('aa');
-			for (let a = 0; a < textData32.length; a++) {
-				if (textData32[a] > 0) {
-					this.pixel2dField[Math.floor(a / this.domWidth)][a % this.domWidth] = -1;
-					this.textCounter++;
-				}
-			}
-		}
-		this.totalCounter -= this.textCounter;
-		this.pixel2dField[this.yPos][this.xPos] = this.currentLevelPlusOne;
-		this.pixel1dField.push({x: this.xPos, y: this.yPos});
-		this.counter = 0;
 	}
+
 	private generateMoveArray() {
 		this.moveArray[0] = {x: -1, y: -1};
 		this.moveArray[1] = {x: 0, y: -1};
@@ -148,13 +164,12 @@ class Colorize {
 		this.moveArray[6] = {x: 0, y: 1};
 		this.moveArray[7] = {x: 1, y: 1};
 	}
-	private generateColorArray(colors: CustomColors[]) {
-		this.colorArray = [];
-		for (let a = 0; a < colors.length; a++) {
-			for (let b = 0; b <= colors[a].steps; b++) {
-				this.colorArray.push(...this.interpolateColors(colors[a].c1, colors[a].c2, colors[a].steps));
-			}
+	private generateColorArray(palette: Palette): number[] {
+		const colors = [];
+		for (let b = 0; b <= palette.steps; b++) {
+			colors.push(...this.interpolateColors(palette.c1, palette.c2, palette.steps));
 		}
+		return colors;
 	}
 	private interpolateColor(color1: any, color2: any, factor: number = 0.5): number {
     const numberArray: number[] = color1.slice();
@@ -181,7 +196,7 @@ class Colorize {
 }
 
 
-interface CustomColors {
+interface Palette {
 	c1: string;
 	c2: string;
 	steps: number;
@@ -190,25 +205,50 @@ interface Point {
 	x: number;
 	y: number;
 }
-interface DrawData {
-	point: Point;
-	array: Point[];
-}
 interface ColorizeOptions {
-	domId?: string;
+	domId: string;
+	startingPoints: StartingPoint[];
+  palettes: Palette[];
+}
+interface StartingPoint {
 	startingX?: number;
 	startingY?: number;
 	overrideStartToCenter?: boolean;
 	speed?: number;
 	text?: string;
+  palette: number;
 }
 
 document.addEventListener('DOMContentLoaded', (event) => {
-	const colorizeDom = new Colorize({
+	const colorizeDom = new Colorize(
+  {
 		domId: 'canvasContainer',
-		startingX: 250,
-		startingY: 5,
-		overrideStartToCenter: true,
-		speed: 800
-	});
+		palettes: [
+			{c1: 'rgb(0, 0, 255)', c2: 'rgb(0, 0, 0)', steps: 16},
+			{c1: 'rgb(255, 0, 0)', c2: 'rgb(0, 0, 0)', steps: 16},
+      {c1: 'rgb(0, 255, 0)', c2: 'rgb(0, 0, 0)', steps: 16},
+      {c1: 'rgb(125, 125, 125)', c2: 'rgb(0, 0, 0)', steps: 16}
+			],
+    startingPoints: [{
+			startingX: 100,
+			startingY: 100,
+			speed: 100,
+			palette: 0
+		}, {
+      startingX: 100,
+      startingY: 700,
+      speed: 200,
+      palette: 1
+    }, {
+      startingX: 700,
+      startingY: 100,
+      speed: 300,
+      palette: 2
+    }, {
+      startingX: 700,
+      startingY: 700,
+      speed: 400,
+      palette: 3
+    }] as StartingPoint[]
+	} as ColorizeOptions);
 });
