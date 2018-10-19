@@ -71,67 +71,67 @@ class Colorize {
 		}
 	}
 
-	public nextGen() {
-    setTimeout(() => {
-    	let next = true;
-      for (let a = 0; a < this.instances.length; a++) {
-      	if (!this.instances[a].genDone) {
-          next = false;
-				}
-      }
-			if (next) {
-				this.resetBoardToNextGen(false);
-				for (let a = 0; a < this.instances.length; a++) {
-					const instance = this.instances[a];
-					this.pixel2dField[instance.yPos][instance.xPos] = this.currentGenPlusOne;
-          instance.pixel1dField = [];
-					instance.pixel1dField.push({x: instance.xPos, y: instance.yPos});
-					instance.counter = 0;
-          instance.pixel1dOldLength = 0;
-          instance.genDone = false;
-				}
-        for (let a = 0; a < this.instances.length; a++) {
-          this.draw(this.instances[a]);
-        }
+	nextGen = () => {
+		let next = true;
+		for (let a = 0; a < this.instances.length; a++) {
+			if (!this.instances[a].genDone) {
+				next = false;
 			}
-			this.ctx.putImageData(this.imageData, 0, 0);
+		}
+		if (next) {
+			this.resetBoardToNextGen(false);
+			for (let a = 0; a < this.instances.length; a++) {
+				const instance = this.instances[a];
+				this.pixel2dField[instance.yPos][instance.xPos] = this.currentGenPlusOne;
+				instance.pixel1dField = [];
+				instance.pixel1dField.push({x: instance.xPos, y: instance.yPos});
+				instance.counter = 0;
+				instance.pixel1dOldLength = 0;
+				instance.genDone = false;
+			}
+			for (let a = 0; a < this.instances.length; a++) {
+				this.draw(this.instances[a]);
+			}
+		}
+		this.ctx.putImageData(this.imageData, 0, 0);
+		requestAnimationFrame(() => {
 			this.nextGen();
-    }, 30);
-	}
+    });
+	};
 
-	public draw(instance: ColorizeInstance) {
-    instance.timeoutIndex = setTimeout(() => {
-      if (!instance.genDone) {
-        instance.pixel1dOldLength = instance.pixel1dField.length;
-        for (let b = 0; b < instance.speed; b++) {
-          for (let a = 0; a < 8; a++) {
-            const newX = instance.xPos + this.moveArray[a].x;
-            const newY = instance.yPos + this.moveArray[a].y;
-            if (this.pixel2dField[newY][newX] === this.currentGen) {
-              this.pixel2dField[newY][newX] = this.currentGenPlusOne;
-              instance.pixel1dField.push({x: newX, y: newY});
-            }
-          }
-          let index = instance.pixel1dField.length - instance.randArray[instance.counter % instance.randArray.length];
-          if (index >= instance.pixel1dField.length || index < 0) {
-            index = instance.pixel1dField.length - 1;
-          }
-          if (index > -1) {
-            instance.xPos = instance.pixel1dField[index].x;
-            instance.yPos = instance.pixel1dField[index].y;
-            instance.pixel1dField.splice(index, 1);
-            this.data32[instance.xPos + instance.yPos * this.domWidth] =
-              this.colors[instance.selectedPalette][instance.counter % this.colors[instance.selectedPalette].length];
-          }
-        }
-        if (instance.pixel1dOldLength == 0 && instance.pixel1dField.length == 0) {
-          instance.genDone = true;
-        }
-        instance.counter++;
-				this.draw(instance);
-      }
-		}, 30);
-	}
+	draw = (instance: ColorizeInstance) => {
+		if (!instance.genDone) {
+			instance.pixel1dOldLength = instance.pixel1dField.length;
+			for (let b = 0; b < instance.speed; b++) {
+				for (let a = 0; a < 8; a++) {
+					const newX = instance.xPos + this.moveArray[a].x;
+					const newY = instance.yPos + this.moveArray[a].y;
+					if (this.pixel2dField[newY][newX] === this.currentGen) {
+						this.pixel2dField[newY][newX] = this.currentGenPlusOne;
+						instance.pixel1dField.push({x: newX, y: newY});
+					}
+				}
+				let index = instance.pixel1dField.length - instance.randArray[instance.counter % instance.randArray.length];
+				if (index >= instance.pixel1dField.length || index < 0) {
+					index = instance.pixel1dField.length - 1;
+				}
+				if (index > -1) {
+					instance.xPos = instance.pixel1dField[index].x;
+					instance.yPos = instance.pixel1dField[index].y;
+					instance.pixel1dField.splice(index, 1);
+					this.data32[instance.xPos + instance.yPos * this.domWidth] =
+						this.colors[instance.selectedPalette][instance.counter % this.colors[instance.selectedPalette].length];
+				}
+			}
+			if (instance.pixel1dOldLength == 0 && instance.pixel1dField.length == 0) {
+				instance.genDone = true;
+			}
+			instance.counter++;
+      requestAnimationFrame(() => {
+        this.draw(instance);
+      });
+		}
+	};
 
 	private resetBoardToNextGen(initArray: boolean = true) {
 		this.currentGen++;
@@ -232,26 +232,23 @@ document.addEventListener('DOMContentLoaded', (event) => {
     startingPoints: [{
 			startingX: 100,
 			startingY: 100,
-			speed: 500,
+			speed: 100,
 			palette: 0
-		},
-		{
-			startingX: 700,
-			startingY: 100,
-			speed: 500,
+		}, {
+      startingX: 100,
+      startingY: 700,
+      speed: 200,
       palette: 1
-		},
-		{
-			startingX: 100,
-			startingY: 700,
-			speed: 500,
-			palette: 2
-		},
-		{
-			startingX: 700,
-			startingY: 700,
-			speed: 500,
-			palette: 3
-		}] as StartingPoint[]
+    }, {
+      startingX: 700,
+      startingY: 100,
+      speed: 300,
+      palette: 2
+    }, {
+      startingX: 700,
+      startingY: 700,
+      speed: 400,
+      palette: 3
+    }] as StartingPoint[]
 	} as ColorizeOptions);
 });
