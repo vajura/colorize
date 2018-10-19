@@ -7,6 +7,7 @@ interface ColorizeInstance {
 	randArray?: number[];
   pixel1dOldLength?: number;
 	pixel1dField?: Point[];
+  genDone?: boolean;
 	selectedPalette?: number;
 	counter?: number;
 }
@@ -24,8 +25,6 @@ class Colorize {
 	private ctx: any;
 	private imageData: any;
 	private data32: Uint32Array;
-
-	private totalCounter: number;
 
 	private instances: ColorizeInstance[] = [];
 
@@ -62,6 +61,7 @@ class Colorize {
 			instance.randArray = [7];
 			instance.counter = 0;
 			instance.pixel1dOldLength = 0;
+			instance.genDone = false;
 			this.instances.push(instance);
 		}
 		this.resetBoardToNextGen();
@@ -73,10 +73,13 @@ class Colorize {
 
 	public nextGen() {
     setTimeout(() => {
-    	if (this.totalCounter < 100) {
-    		console.log(this.totalCounter);
-			}
-			if (this.totalCounter === 0) {
+    	let next = true;
+      for (let a = 0; a < this.instances.length; a++) {
+      	if (!this.instances[a].genDone) {
+          next = false;
+				}
+      }
+			if (next) {
 				this.resetBoardToNextGen(false);
 				for (let a = 0; a < this.instances.length; a++) {
 					const instance = this.instances[a];
@@ -85,8 +88,11 @@ class Colorize {
 					instance.pixel1dField.push({x: instance.xPos, y: instance.yPos});
 					instance.counter = 0;
           instance.pixel1dOldLength = 0;
-					instance.selectedPalette = this.currentGenPlusOne % this.colors[instance.selectedPalette].length;
+          instance.genDone = false;
 				}
+        for (let a = 0; a < this.instances.length; a++) {
+          this.draw(this.instances[a]);
+        }
 			}
 			this.ctx.putImageData(this.imageData, 0, 0);
 			this.nextGen();
@@ -95,42 +101,41 @@ class Colorize {
 
 	public draw(instance: ColorizeInstance) {
     instance.timeoutIndex = setTimeout(() => {
-			let actualSpeed = instance.speed;
-			/*if (actualSpeed > this.totalCounter) {
-				actualSpeed = instance.pixel1dField.length;
-			}*/
-			instance.pixel1dOldLength = instance.pixel1dField.length;
-			for (let b = 0; b < instance.speed; b++) {
-				for (let a = 0; a < 8; a++) {
-					const newX = instance.xPos + this.moveArray[a].x;
-					const newY = instance.yPos + this.moveArray[a].y;
-					if (this.pixel2dField[newY][newX] === this.currentGen) {
-						this.pixel2dField[newY][newX] = this.currentGenPlusOne;
-            instance.pixel1dField.push({x: newX, y: newY});
-						this.totalCounter--;
-					}
-				}
-				let randArrayIndex = instance.pixel1dField.length - instance.randArray[instance.counter % instance.randArray.length];
-				if (randArrayIndex > instance.pixel1dField.length - 1 || randArrayIndex < 0) {
-					randArrayIndex = instance.pixel1dField.length - 1;
-				}
-				if (randArrayIndex > -1) {
-          instance.xPos = instance.pixel1dField[randArrayIndex].x;
-          instance.yPos = instance.pixel1dField[randArrayIndex].y;
-          instance.pixel1dField.splice(randArrayIndex, 1);
-					this.data32[instance.xPos + instance.yPos * this.domWidth] =
-						this.colors[instance.selectedPalette][instance.counter % this.colors[instance.selectedPalette].length];
-				}
-			}
-      instance.counter++;
-			this.draw(instance);
+      if (!instance.genDone) {
+        instance.pixel1dOldLength = instance.pixel1dField.length;
+        for (let b = 0; b < instance.speed; b++) {
+          for (let a = 0; a < 8; a++) {
+            const newX = instance.xPos + this.moveArray[a].x;
+            const newY = instance.yPos + this.moveArray[a].y;
+            if (this.pixel2dField[newY][newX] === this.currentGen) {
+              this.pixel2dField[newY][newX] = this.currentGenPlusOne;
+              instance.pixel1dField.push({x: newX, y: newY});
+            }
+          }
+          let index = instance.pixel1dField.length - instance.randArray[instance.counter % instance.randArray.length];
+          if (index >= instance.pixel1dField.length || index < 0) {
+            index = instance.pixel1dField.length - 1;
+          }
+          if (index > -1) {
+            instance.xPos = instance.pixel1dField[index].x;
+            instance.yPos = instance.pixel1dField[index].y;
+            instance.pixel1dField.splice(index, 1);
+            this.data32[instance.xPos + instance.yPos * this.domWidth] =
+              this.colors[instance.selectedPalette][instance.counter % this.colors[instance.selectedPalette].length];
+          }
+        }
+        if (instance.pixel1dOldLength == 0 && instance.pixel1dField.length == 0) {
+          instance.genDone = true;
+        }
+        instance.counter++;
+				this.draw(instance);
+      }
 		}, 30);
 	}
 
 	private resetBoardToNextGen(initArray: boolean = true) {
 		this.currentGen++;
 		this.currentGenPlusOne++;
-		this.totalCounter = this.domWidth * this.domHeight - this.domWidth * 2 - this.domHeight * 2 + 2 - this.instances.length;
 		if (initArray) {
 			for (let a = 0; a < this.domHeight; a++) {
 				this.pixel2dField[a] = [];
@@ -222,7 +227,7 @@ document.addEventListener('DOMContentLoaded', (event) => {
 			{c1: 'rgb(0, 0, 255)', c2: 'rgb(0, 0, 0)', steps: 16},
 			{c1: 'rgb(255, 0, 0)', c2: 'rgb(0, 0, 0)', steps: 16},
       {c1: 'rgb(0, 255, 0)', c2: 'rgb(0, 0, 0)', steps: 16},
-      {c1: 'rgb(255, 255, 0)', c2: 'rgb(0, 0, 0)', steps: 16}
+      {c1: 'rgb(125, 125, 125)', c2: 'rgb(0, 0, 0)', steps: 16}
 			],
     startingPoints: [{
 			startingX: 100,
@@ -242,11 +247,11 @@ document.addEventListener('DOMContentLoaded', (event) => {
 			speed: 500,
 			palette: 2
 		},
-      {
-        startingX: 700,
-        startingY: 700,
-        speed: 500,
-        palette: 3
-      }] as StartingPoint[]
+		{
+			startingX: 700,
+			startingY: 700,
+			speed: 500,
+			palette: 3
+		}] as StartingPoint[]
 	} as ColorizeOptions);
 });
