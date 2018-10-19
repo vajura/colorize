@@ -5,6 +5,7 @@ interface ColorizeInstance {
 	timeoutIndex?: number;
 	interval?: number;
 	randArray?: number[];
+  pixel1dOldLength?: number;
 	pixel1dField?: Point[];
 	selectedPalette?: number;
 	counter?: number;
@@ -48,18 +49,19 @@ class Colorize {
 		for (let a = 0; a < options.startingPoints.length; a++) {
 			const sp: StartingPoint = options.startingPoints[a];
 			const instance: ColorizeInstance = {};
-			instance.xPos = sp.startingX | 1;
-			instance.yPos = sp.startingY | 1;
+			instance.xPos = sp.startingX || 1;
+			instance.yPos = sp.startingY || 1;
 			if (sp.overrideStartToCenter) {
 				instance.xPos = Math.round(this.domWidth / 2);
 				instance.yPos = Math.round(this.domHeight / 2);
 			}
-			instance.speed = sp.speed | 200;
-			instance.selectedPalette = a;
+			instance.speed = sp.speed || 100;
+			instance.selectedPalette = sp.palette || 0;
 			instance.pixel1dField = [];
 			instance.interval = 1000 / 100;
-			instance.randArray = [5];
+			instance.randArray = [7];
 			instance.counter = 0;
+			instance.pixel1dOldLength = 0;
 			this.instances.push(instance);
 		}
 		this.resetBoardToNextGen();
@@ -70,28 +72,35 @@ class Colorize {
 	}
 
 	public nextGen() {
-    setInterval(() => {
+    setTimeout(() => {
+    	if (this.totalCounter < 100) {
+    		console.log(this.totalCounter);
+			}
 			if (this.totalCounter === 0) {
 				this.resetBoardToNextGen(false);
 				for (let a = 0; a < this.instances.length; a++) {
 					const instance = this.instances[a];
 					this.pixel2dField[instance.yPos][instance.xPos] = this.currentGenPlusOne;
+          instance.pixel1dField = [];
 					instance.pixel1dField.push({x: instance.xPos, y: instance.yPos});
 					instance.counter = 0;
+          instance.pixel1dOldLength = 0;
 					instance.selectedPalette = this.currentGenPlusOne % this.colors[instance.selectedPalette].length;
 				}
 			}
 			this.ctx.putImageData(this.imageData, 0, 0);
-    }, 60);
+			this.nextGen();
+    }, 30);
 	}
 
 	public draw(instance: ColorizeInstance) {
     instance.timeoutIndex = setTimeout(() => {
 			let actualSpeed = instance.speed;
-			if (instance.speed > this.totalCounter) {
+			/*if (actualSpeed > this.totalCounter) {
 				actualSpeed = instance.pixel1dField.length;
-			}
-			for (let b = 0; b < actualSpeed; b++) {
+			}*/
+			instance.pixel1dOldLength = instance.pixel1dField.length;
+			for (let b = 0; b < instance.speed; b++) {
 				for (let a = 0; a < 8; a++) {
 					const newX = instance.xPos + this.moveArray[a].x;
 					const newY = instance.yPos + this.moveArray[a].y;
@@ -115,13 +124,13 @@ class Colorize {
 			}
       instance.counter++;
 			this.draw(instance);
-		}, instance.interval);
+		}, 30);
 	}
 
 	private resetBoardToNextGen(initArray: boolean = true) {
 		this.currentGen++;
 		this.currentGenPlusOne++;
-		this.totalCounter = this.domWidth * this.domHeight - this.domWidth * 2 - this.domHeight * 2 + 3;
+		this.totalCounter = this.domWidth * this.domHeight - this.domWidth * 2 - this.domHeight * 2 + 2 - this.instances.length;
 		if (initArray) {
 			for (let a = 0; a < this.domHeight; a++) {
 				this.pixel2dField[a] = [];
@@ -202,22 +211,42 @@ interface StartingPoint {
 	overrideStartToCenter?: boolean;
 	speed?: number;
 	text?: string;
+  palette: number;
 }
 
 document.addEventListener('DOMContentLoaded', (event) => {
 	const colorizeDom = new Colorize(
   {
 		domId: 'canvasContainer',
-		palettes: [{c1: 'rgb(0, 0, 255)', c2: 'rgb(0, 0, 0)', steps: 16}, {c1: 'rgb(0, 0, 255)', c2: 'rgb(0, 0, 0)', steps: 16}],
+		palettes: [
+			{c1: 'rgb(0, 0, 255)', c2: 'rgb(0, 0, 0)', steps: 16},
+			{c1: 'rgb(255, 0, 0)', c2: 'rgb(0, 0, 0)', steps: 16},
+      {c1: 'rgb(0, 255, 0)', c2: 'rgb(0, 0, 0)', steps: 16},
+      {c1: 'rgb(255, 255, 0)', c2: 'rgb(0, 0, 0)', steps: 16}
+			],
     startingPoints: [{
-			startingX: 250,
-			startingY: 5,
-			speed: 20
+			startingX: 100,
+			startingY: 100,
+			speed: 500,
+			palette: 0
 		},
 		{
-			startingX: 2,
-			startingY: 2,
-			speed: 100
-		}] as StartingPoint[]
+			startingX: 700,
+			startingY: 100,
+			speed: 500,
+      palette: 1
+		},
+		{
+			startingX: 100,
+			startingY: 700,
+			speed: 500,
+			palette: 2
+		},
+      {
+        startingX: 700,
+        startingY: 700,
+        speed: 500,
+        palette: 3
+      }] as StartingPoint[]
 	} as ColorizeOptions);
 });
