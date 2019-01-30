@@ -1,16 +1,4 @@
-interface ColorizeInstance {
-	xPos?: number;
-	yPos?: number;
-	speed?: number;
-	timeoutIndex?: number;
-	interval?: number;
-	randArray?: number[];
-  pixel1dOldLength?: number;
-	pixel1dField?: Point[];
-  genDone?: boolean;
-	selectedPalette?: number;
-	counter?: number;
-}
+import { ColorizeInstance, ColorizeOptions, Palette, Point, StartingPoint } from './helper';
 
 class Colorize {
 	private domWidth: number = 10;
@@ -57,8 +45,8 @@ class Colorize {
 			instance.speed = sp.speed || 100;
 			instance.selectedPalette = sp.palette || 0;
 			instance.pixel1dField = [];
-			instance.interval = 1000 / 100;
-			instance.randArray = [7];
+			instance.interval = 1000 / 50;
+			instance.randArray = options.randArray && options.randArray.length ? options.randArray : [7];
 			instance.counter = 0;
 			instance.pixel1dOldLength = 0;
 			instance.genDone = false;
@@ -164,6 +152,7 @@ class Colorize {
 		this.moveArray[6] = {x: 0, y: 1};
 		this.moveArray[7] = {x: 1, y: 1};
 	}
+
 	private generateColorArray(palette: Palette): number[] {
 		const colors = [];
 		for (let b = 0; b <= palette.steps; b++) {
@@ -171,6 +160,7 @@ class Colorize {
 		}
 		return colors;
 	}
+
 	private interpolateColor(color1: any, color2: any, factor: number = 0.5): number {
     const numberArray: number[] = color1.slice();
     let colorNumber: number = 0;
@@ -180,6 +170,7 @@ class Colorize {
     colorNumber = 0xFF000000 + numberArray[0] + numberArray[1] * 256 + numberArray[2] * 256 * 256;
     return colorNumber;
 	}
+
 	private interpolateColors(color1: any, color2: any, steps: number): number[] {
 	    const stepFactor: number = 1 / (steps - 1);
 	    const interpolatedColorArray: number[] = [];
@@ -190,33 +181,8 @@ class Colorize {
 	    for (let i = 0; i < steps; i++) {
         interpolatedColorArray.push(this.interpolateColor(color1, color2, stepFactor * i));
 	    }
-
 	    return interpolatedColorArray;
 	}
-}
-
-
-interface Palette {
-	c1: string;
-	c2: string;
-	steps: number;
-}
-interface Point {
-	x: number;
-	y: number;
-}
-interface ColorizeOptions {
-	domId: string;
-	startingPoints: StartingPoint[];
-  palettes: Palette[];
-}
-interface StartingPoint {
-	startingX?: number;
-	startingY?: number;
-	overrideStartToCenter?: boolean;
-	speed?: number;
-	text?: string;
-  palette: number;
 }
 
 document.addEventListener('DOMContentLoaded', (event) => {
@@ -228,27 +194,12 @@ document.addEventListener('DOMContentLoaded', (event) => {
 			{c1: 'rgb(255, 0, 0)', c2: 'rgb(0, 0, 0)', steps: 16},
       {c1: 'rgb(0, 255, 0)', c2: 'rgb(0, 0, 0)', steps: 16},
       {c1: 'rgb(125, 125, 125)', c2: 'rgb(0, 0, 0)', steps: 16}
-			],
+		],
     startingPoints: [{
 			startingX: 100,
 			startingY: 100,
 			speed: 100,
 			palette: 0
-		}, {
-      startingX: 100,
-      startingY: 700,
-      speed: 200,
-      palette: 1
-    }, {
-      startingX: 700,
-      startingY: 100,
-      speed: 300,
-      palette: 2
-    }, {
-      startingX: 700,
-      startingY: 700,
-      speed: 400,
-      palette: 3
     }] as StartingPoint[]
 	} as ColorizeOptions);
 });

@@ -5,10 +5,12 @@
   "main": "./dist/js/main.js",
   "scripts": {
     "build": "npm run create-dir && npm run copy-static-files && npm run build-css && npm run tslint && tsc -p \"./src\"",
+    "build-win": "npm run create-dir-win && npm run copy-static-files && npm run build-css && npm run tslint && tsc -p \"./src\"",
     "clean": "rm -rf ./dist/*",
     "watch": "concurrently \"tsc -wp \"./src\"",
     "tslint": "tslint -c tslint.json -p src/tsconfig.json",
-    "create-dir": "mkdirp dist/style",
+    "create-dir": "mkdir -p dist/style && mkdir -p dist/style",
+    "create-dir-win": "mkdirp dist/style && mkdirp dist/style",
     "copy-static-files": "cp src/index.html dist/index.html",
     "build-css": "node-sass ./src/style/style.scss ./dist/style/style.css --output-style compressed"
   },
